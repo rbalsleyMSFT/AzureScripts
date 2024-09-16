@@ -10,7 +10,7 @@ You can run
 
 You can also run:
 
-`.\CheckVMAvailabilityv3.ps1 -AvailableOnly -Subscription 'SUBSCRIPTIONID GUID' -AccountId 'ACCOUNT UPN' -Tenant 'TENANTID GUID'`
+`.\CheckVMAvailability.ps1 -AvailableOnly -Subscription 'SUBSCRIPTIONID GUID' -AccountId 'ACCOUNT UPN' -Tenant 'TENANTID GUID'`
 
 which will prompt you for your password and MFA (if applicable)
 
