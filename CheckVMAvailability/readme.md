@@ -6,7 +6,7 @@ This script will display what Azure VM sizes are currently available within a re
 
 You can run 
 
-`.\CheckVMAvailability.ps1 -availableonly` and it will prompt you for credentials to select the proper Azure subscription and tenant information
+`.\CheckVMAvailability.ps1 -availableonly` and it will prompt you for credentials to select the proper Azure subscription and tenant information and ask which region you're interested in.
 
 You can also run:
 
