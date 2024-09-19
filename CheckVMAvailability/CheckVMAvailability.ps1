@@ -112,4 +112,4 @@ foreach ($Sku in $VMSKUs) {
 $OutTable |
     Sort-Object -Property Name |
     Select-Object Name, Location, "Applies to SubscriptionID", "Subscription Restriction", "Zone Restriction" |
-    Format-Table
+    Format-Table -AutoSize
