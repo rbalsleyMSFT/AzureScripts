@@ -1,6 +1,6 @@
 param(
     [Parameter(Mandatory = $false)]
-    [string]$Region, 
+    [string]$Region,
     [Parameter(Mandatory = $false)]
     [string]$Subscription, # Subscription ID or name
     [Parameter(Mandatory = $false)]
@@ -71,7 +71,11 @@ foreach ($Sku in $VMSKUs) {
     }
 
     $ZoneRestriction = if (($Sku.Restrictions.Type | Out-String).Contains("Zone")) {
-        "NotAvailableInZone: " + (($Sku.Restrictions.RestrictionInfo.Zones | Where-Object { $_ }) -join ",")
+        $UnavailableZones = (($Sku.Restrictions.RestrictionInfo.Zones | Where-Object { $_ }) -join ",")
+        # Store available zones in variable $AvailableZones
+        $UnavailableZonesArray = $UnavailableZones -split ',' | ForEach-Object { [int]$_ }
+        $AvailableZones = 1..3 | Where-Object { $UnavailableZonesArray -notcontains $_ }
+        "Available in Zone: " + $AvailableZones
     } else {
         "Available - No zone restrictions applied"
     }
@@ -82,15 +86,14 @@ foreach ($Sku in $VMSKUs) {
             $LocationInfo = $Sku.LocationInfo | Where-Object { $_.Location -eq $Region }
 
             if ($LocationInfo) {
-                $AvailableZones = $LocationInfo.Zones
 
-                # Check if at least one zone is available
-                if ($AvailableZones -and $AvailableZones.Count -gt 0) {
+                # Check if at least one is available
+                if ($AvailableZones -and $AvailableZones.Count -ge 1) {
                     # Include the SKU as it has at least one available zone
                     $OutTable += [PSCustomObject]@{
                         "Name"                      = $Sku.Name
                         "Location"                  = $Region
-                        "Applies to SubscriptionID" = $SubId
+                        # "Applies to SubscriptionID" = $SubId
                         "Subscription Restriction"  = $LocRestriction
                         "Zone Restriction"          = $ZoneRestriction
                     }
@@ -102,7 +105,7 @@ foreach ($Sku in $VMSKUs) {
         $OutTable += [PSCustomObject]@{
             "Name"                      = $Sku.Name
             "Location"                  = $Region
-            "Applies to SubscriptionID" = $SubId
+            #"Applies to SubscriptionID" = $SubId
             "Subscription Restriction"  = $LocRestriction
             "Zone Restriction"          = $ZoneRestriction
         }
@@ -111,5 +114,6 @@ foreach ($Sku in $VMSKUs) {
 
 $OutTable |
     Sort-Object -Property Name |
-    Select-Object Name, Location, "Applies to SubscriptionID", "Subscription Restriction", "Zone Restriction" |
+    # Select-Object Name, Location, "Applies to SubscriptionID", "Subscription Restriction", "Zone Restriction" |
+    Select-Object Name, Location, "Subscription Restriction", "Zone Restriction" |
     Format-Table -AutoSize
