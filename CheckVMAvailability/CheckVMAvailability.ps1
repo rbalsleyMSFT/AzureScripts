@@ -57,9 +57,7 @@ if (-not $Region) {
     Write-Host "`nYou have selected region: $Region`n"
 }
 
-$VMSKUs = Get-AzComputeResourceSku | Where-Object {
-    $_.Locations.Contains($Region) -and $_.ResourceType -eq "virtualMachines"
-}
+$VMSKUs = Get-AzComputeResourceSku -Location $Region | Where-Object { $_.ResourceType -eq "virtualMachines"}
 
 $OutTable = @()
 
