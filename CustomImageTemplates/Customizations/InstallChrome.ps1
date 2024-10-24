@@ -80,7 +80,7 @@ try {
 
         # Execute the MSI installer silently from the local path
         Write-Log "Starting Google Chrome installation from local MSI."
-        & msiexec.exe /i "$localMsiPath" /qn /norestart
+        Start-Process msiexec.exe -ArgumentList "/i `"$localMsiPath`" /qn /norestart" -Wait
 
         # Capture the exit code
         $exitCode = $LASTEXITCODE
