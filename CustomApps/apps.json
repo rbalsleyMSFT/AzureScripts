@@ -1,0 +1,15 @@
+{
+    "Applications": [
+      {
+        "Name": "Google Chrome",
+        "InstallerPath": "C:\\Temp\\Apps\\Chrome\\googlechromestandaloneenterprise64.msi",
+        "Arguments": "/qn /norestart"
+      },
+      {
+        "Name": "Example App",
+        "InstallerPath": "C:\\Temp\\Apps\\ExampleApp\\exampleinstaller.exe",
+        "Arguments": "/silent /install"
+      }
+    ]
+  }
+  
