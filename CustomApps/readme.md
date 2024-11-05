@@ -200,7 +200,9 @@ The content is now uploaded to the storage account.
 
    ![1730769342456](image/readme/1730769342456.png)
 2. For **Customizer** select **Run a powershell script**
+
    **Name**: Download-Apps
+
    **Script source URL**: `https://your_storage_account.blob.core.windows.net/apps/Download-Apps.ps1?your_sas_token `
    Note: The `?your_sas_token` is just one question mark, not two. This SAS token has write permissions which aren't needed to retrieve the script. If you want to run with least priviledge, you can generate a new SAS token with Read and List permissions
 
@@ -209,9 +211,12 @@ The content is now uploaded to the storage account.
 4. For **Customizer** select **Run a powershell script**
 
    **Name**: Install-Apps
+
    **Script source URL**: `https://your_storage_account.blob.core.windows.net/apps/Install-Apps.ps1?your_sas_token `
    Note: The `?your_sas_token` is just one question mark, not two. This SAS token has write permissions which aren't needed to retrieve the script. If you want to run with least priviledge, you can generate a new SAS token with Read and List permissions
+   
    **Permissions: Run as Elevated
+
    Run as system: Checked**
 
    Depending on the application(s), you may not need to run as elevated, however in most cases this is probably necessary
@@ -219,12 +224,16 @@ The content is now uploaded to the storage account.
 #### Custom Image Templates
 
 1. Under the **Customizations** tab click **Add your own script**
+
    Script Name: Download-Apps
+
    URI: `https://your_storage_account.blob.core.windows.net/apps/Download-Apps.ps1?your_sas_token`
 
    Note: The `?your_sas_token` is just one question mark, not two. This SAS token has write permissions which aren't needed to retrieve the script. If you want to run with least priviledge, you can generate a new SAS token with Read and List permissions
 2. Under the **Customizations** tab click **Add your own script
+
    Script Name:** Install-Apps
+   
    URI: `https://your_storage_account.blob.core.windows.net/apps/Install-Apps.ps1?your_sas_token`
 
    Note: The `?your_sas_token` is just one question mark, not two. This SAS token has write permissions which aren't needed to retrieve the script. If you want to run with least priviledge, you can generate a new SAS token with Read and List permissions
