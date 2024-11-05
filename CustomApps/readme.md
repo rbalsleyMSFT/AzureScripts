@@ -230,7 +230,7 @@ The content is now uploaded to the storage account.
    **URI:** `https://your_storage_account.blob.core.windows.net/apps/Download-Apps.ps1?your_sas_token`
 
    Note: The `?your_sas_token` is just one question mark, not two. This SAS token has write permissions which aren't needed to retrieve the script. If you want to run with least priviledge, you can generate a new SAS token with Read and List permissions
-2. Under the **Customizations** tab click **Add your own script
+2. Under the **Customizations** tab click **Add your own script**
 
    **Script Name:** Install-Apps
 
