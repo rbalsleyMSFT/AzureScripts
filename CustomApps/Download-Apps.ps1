@@ -36,14 +36,14 @@
     The path to the log file where script actions and errors will be recorded.
 
 .EXAMPLE
-    .\DownloadAndPrepareApps.ps1 -storageAccountName "mystorageaccount" -containerName "apps" -sasToken "your_sas_token"
+    .\Download-Apps.ps1 -storageAccountName "mystorageaccount" -containerName "apps" -sasToken "your_sas_token"
 #>
 
 param (
     # Azure Blob Storage details
-    [string]$storageAccountName,
-    [string]$containerName,
-    [string]$sasToken,
+    [string]$storageAccountName = 'myStorageAccount',
+    [string]$containerName = 'apps',
+    [string]$sasToken = 'your_sas_token',
 
     # Local paths
     [string]$localAppsPath = "C:\Temp",
@@ -56,6 +56,8 @@ param (
     # Log file path
     [string]$logFile = "C:\Windows\Temp\DownloadApps.log"
 )
+# Set the preference for progress messages to SilentlyContinue to speed up Invoke-WebRequest calls
+$ProgressPreference = "SilentlyContinue"
 
 # Function to write messages to the log file with timestamps
 function Write-Log {

@@ -21,7 +21,7 @@
     The SAS token with Read, Write, and List permissions for the target Blob Storage container.
 
 .EXAMPLE
-    .\Upload-AppsToBlob.ps1 -SourcePath "c:\source" -StorageAccountName "mystorageaccount" -ContainerName "apps" -SasToken "sv=2021-06-08&ss=b&srt=sco&sp=rl&se=2025-12-31T23:59:00Z&st=2023-01-01T00:00:00Z&spr=https&sig=your_signature"
+    .\Upload-AppsToBlob.ps1 -SourcePath "c:\source" -StorageAccountName "mystorageaccount" -ContainerName "apps" -SasToken "your_sas_token"
 
 .NOTES
     - Ensure you have the necessary permissions to access both the source directory and the Azure Blob Storage container.
@@ -29,23 +29,19 @@
 #>
 
 param(
-    [Parameter(Mandatory = $true)]
     [string]$SourcePath,
-
-    [Parameter(Mandatory = $true)]
     [string]$StorageAccountName,
-
-    [Parameter(Mandatory = $true)]
     [string]$ContainerName,
-
-    [Parameter(Mandatory = $true)]
     [string]$SasToken,
 
     [string]$AzCopyDownloadUrl = "https://aka.ms/downloadazcopy-v10-windows",
-    [string]$AzCopyExeName = "AzCopy.exe",
+    [string]$azCopyDownloadPath = $PSScriptRoot,
+    [string]$azcopyexe = "AzCopy.exe",
     [string]$PlaceholderFileName = ".keep",
     [string]$logFile = ".\UploadApps.log"
 )
+# Set the preference for progress messages to SilentlyContinue to speed up Invoke-WebRequest calls
+$ProgressPreference = "SilentlyContinue"
 
 function Write-Log {
     param (
@@ -84,57 +80,74 @@ function Write-Log {
 
 # Function to check if AzCopy exists
 function Test-AzCopy {
-    if (Test-Path -Path $AzCopyExeName) {
+    if (Test-Path -Path $azcopyexe) {
         Write-Log -Message "AzCopy is already present in the current directory." -Level "INFO"
         return $true
     }
     else {
         Write-Log -Message "AzCopy not found. Downloading..." -Level "INFO"
-        return $false
+        # return $false
     }
 }
 
 # Function to download and extract AzCopy
-function Get-AzCopy {
-    $tempDir = "$env:TEMP\AzCopyDownload"
-    New-Item -Path $tempDir -ItemType Directory -Force | Out-Null
-    $azCopyZip = "$tempDir\azcopy.zip"
-
-    Write-Log -Message "Downloading AzCopy from $AzCopyDownloadUrl..." -Level "INFO"
-    try {
-        Invoke-WebRequest -Uri $AzCopyDownloadUrl -OutFile $azCopyZip -UseBasicParsing
-        Write-Log -Message "Downloaded AzCopy to $azCopyZip." -Level "INFO"
-    }
-    catch {
-        Write-Log -Message "Failed to download AzCopy. Error: $_" -Level "ERROR"
-        exit 1
-    }
-
-    Write-Log -Message "Extracting AzCopy..." -Level "INFO"
-    try {
-        Expand-Archive -Path $azCopyZip -DestinationPath $tempDir -Force
-        Write-Log -Message "AzCopy extracted successfully." -Level "INFO"
-    }
-    catch {
-        Write-Log -Message "Failed to extract AzCopy. Error: $_" -Level "ERROR"
-        exit 1
-    }
-
-    # Find the AzCopy executable in the extracted files
-    $extractedFolder = Get-ChildItem -Path $tempDir -Directory | Sort-Object Name -Descending | Select-Object -First 1
-    $azCopyPath = Join-Path $extractedFolder.FullName $AzCopyExeName
-
-    if (Test-Path -Path $azCopyPath) {
-        Copy-Item -Path $azCopyPath -Destination . -Force
-        Write-Log -Message "AzCopy extracted to current directory." -Level "INFO"
+function Install-AzCopy {
+    if (Test-Path -Path $azCopyExe) {
+        Write-Log "AzCopy is already installed at $azCopyExe."
     }
     else {
-        Write-Log -Message "Failed to find AzCopy executable after extraction." -Level "ERROR"
-        exit 1
-    }
+        Write-Log "AzCopy not found. Downloading AzCopy..."
 
-    # Clean up temporary files
-    Remove-Item -Path $tempDir -Recurse -Force
+        if(!(Test-Path -Path $azCopyDownloadPath)){
+            Write-Log "Creating download directory at $azCopyDownloadPath."
+            New-Item -Path $azCopyDownloadPath -ItemType Directory -Force | Out-Null
+        }
+
+        $azCopyZipPath = "$azCopyDownloadPath\AzCopy.zip"
+
+        try {
+            Invoke-WebRequest -Uri $azCopyDownloadUrl -OutFile $azCopyZipPath -UseBasicParsing
+            Write-Log "AzCopy downloaded successfully to $azCopyZipPath."
+        }
+        catch {
+            Write-Log "Failed to download AzCopy. Error: $_" "ERROR"
+            exit 1
+        }
+
+        Write-Log "Extracting AzCopy..."
+        try {
+            Expand-Archive -Path $azCopyZipPath -DestinationPath $azCopyDownloadPath -Force
+            Write-Log "AzCopy extracted successfully to $azCopyDownloadPath."
+        }
+        catch {
+            Write-Log "Failed to extract AzCopy. Error: $_" "ERROR"
+            exit 1
+        }
+
+        Write-Log "Installing AzCopy..."
+        try {
+            # Find the AzCopy executable
+            $extractedAzCopy = Get-ChildItem -Path $azCopyDownloadPath -Filter "AzCopy.exe" -Recurse | Select-Object -First 1
+            if ($extractedAzCopy) {
+                # Move AzCopy to the installation path
+                Move-Item -Path $extractedAzCopy.FullName -Destination $azCopyExe -Force
+                Write-Log "AzCopy copied successfully to $azCopyDownloadPath\$azCopyExe."
+            }
+            else {
+                Write-Log "AzCopy executable not found after extraction." "ERROR"
+                exit 1
+            }
+        }
+        catch {
+            Write-Log "Failed to install AzCopy. Error: $_" "ERROR"
+            exit 1
+        }
+
+        # Clean up
+        Remove-Item -Path $azCopyZipPath -Force -ErrorAction SilentlyContinue
+        Remove-Item -Path $extractedAzCopy.DirectoryName -Recurse -Force -ErrorAction SilentlyContinue
+        Write-Log "Cleaned up temporary AzCopy files."
+    }
 }
 
 # Function to add placeholder files to empty directories
@@ -191,7 +204,7 @@ function Start-AppsUpload {
             "--recursive=true",
             "--delete-destination=false"
         )
-        Start-Process -FilePath ".\$AzCopyExeName" -ArgumentList $azCopyArgs -NoNewWindow -Wait
+        Start-Process -FilePath ".\$azcopyexe" -ArgumentList $azCopyArgs -NoNewWindow -Wait
     }
     catch {
         Write-Log -Message "Error during AzCopy execution: $_" -Level "ERROR"
@@ -200,12 +213,21 @@ function Start-AppsUpload {
 }
 
 # Main script execution
-if (-not (Test-AzCopy)) {
-    Get-AzCopy
+Write-Log "Script execution started."
+
+Install-AzCopy
+
+# Verify AzCopy installation
+if (!(Test-Path -Path $azCopyExe)) {
+    Write-Log "AzCopy executable not found at $azCopyExe after installation." "ERROR"
+    exit 1
+}
+else {
+    Write-Log "AzCopy executable verified at $azCopyExe."
 }
 
 # Verify AzCopy is now present
-if (Test-Path -Path ".\$AzCopyExeName") {
+if (Test-Path -Path ".\$azcopyexe") {
     Write-Log -Message "AzCopy is ready for use." -Level "INFO"
 }
 else {
