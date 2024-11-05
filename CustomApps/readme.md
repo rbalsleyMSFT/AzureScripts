@@ -193,6 +193,7 @@ It's assumed that you've already modified the apps.json file.
 The content is now uploaded to the storage account.
 
 ### Create customization scripts in Azure Image Builder/Custom Image Templates
+You don't need to do both of these, just one or the other. Custom Image Templates are part of Azure Virtual Desktop host pool creation. 
 
 #### Azure Image Builder
 
