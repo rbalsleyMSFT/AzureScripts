@@ -55,7 +55,7 @@ Downloads applications from Azure Blob Storage to the VM that is building the cu
 
 #### Prerequisites
 
-* SASToken with Read
+* SASToken with Read and List permissions (alternatively you can use the original token you created for upload, however that includes write permissions which aren't necessary for the VM to download the apps from the storage account)
 
 The below parameters should be filled inside the script. Since the scripts will be in a storage account that requires using a SASToken, that token will get appended to the URL of the file (e.g. `https://your_storage_account.blob.core.windows.net/apps/Download-Apps.ps1?<your_sas_token>`). Azure Image Builder will get confused with the sas token plus the PowerShell parameters defined. So make sure to hardcode the parameter values inside the script.
 
