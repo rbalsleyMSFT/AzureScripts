@@ -30,6 +30,8 @@ For broader inventory-style output, use table format:
 
 `.\CheckVMAvailability.ps1 -Region westus2 -AvailableOnly -OutputFormat Table`
 
+Table output is a compact summary view with `Name`, `Location`, `Zones`, `Availability`, and, when `-CheckQuota` is used, `Quota`. List output includes scoped restriction details and full quota details.
+
 If you are deploying multiple VMs, include the requested count so quota is calculated against the total cores required:
 
 `.\CheckVMAvailability.ps1 -Region westus2 -VMSize Standard_A1_v2 -RequestedVMCount 3 -CheckQuota`
@@ -40,8 +42,13 @@ If your deployment pins a specific availability zone, include that zone:
 
 The capacity-related columns mean:
 
-- `Restriction Reasons`: Azure SKU restriction reason codes returned by the Compute resource SKU API.
+- `Zones`: The usable availability zones for the SKU, or `Regional` when no zone-specific metadata is returned.
+- `Availability`: A short summary such as `Available`, `Limited zones`, `Region restricted`, or `Zone unavailable`.
+- `Region Status`: Whether the SKU has a region-level restriction.
+- `Zone Status`: Which availability zone is usable for the SKU, or whether a requested zone is blocked.
+- `Restriction Detail`: Scoped restriction details, such as the unavailable zone numbers and the Azure reason code for those zones. This is included in list output.
 - `Capacity Signal`: A summarized signal from SKU restrictions and quota checks.
+- `Quota`: A compact quota summary shown in table output when `-CheckQuota` is used.
 - `Quota Check`: Whether the subscription has enough regional and VM-family vCPU quota for the requested VM count.
 - `Quota Detail`: Current quota headroom details when `-CheckQuota` is used.
 

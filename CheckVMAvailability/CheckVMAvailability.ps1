@@ -217,45 +217,68 @@ foreach ($Sku in $VMSKUs) {
     $AdvertisedZones = @($LocationInfo.Zones | Where-Object { $_ } | Sort-Object)
     $RestrictedZones = @($ZoneRestrictions | ForEach-Object { $_.RestrictionInfo.Zones } | Where-Object { $_ } | Select-Object -Unique | Sort-Object)
     $AvailableZones = @($AdvertisedZones | Where-Object { $RestrictedZones -notcontains $_ })
-    $RestrictionReasons = Get-RestrictionReasons -Restrictions $Restrictions
+    $LocationRestrictionReasons = Get-RestrictionReasons -Restrictions $LocationRestrictions
+    $ZoneRestrictionReasons = Get-RestrictionReasons -Restrictions $ZoneRestrictions
     $VCpuCount = Get-SkuCapabilityInt -Sku $Sku -Name "vCPUs"
     $RequestedCores = if ($VCpuCount) { $VCpuCount * $RequestedVMCount } else { $null }
     $QuotaStatus = Get-QuotaStatus -Sku $Sku -UsageByName $UsageByName -RequestedVMCount $RequestedVMCount
 
-    $LocRestriction = if ($LocationRestrictions.Count -gt 0) {
-        "NotAvailableInRegion ($RestrictionReasons)"
+    $RegionStatus = if ($LocationRestrictions.Count -gt 0) {
+        "Restricted ($LocationRestrictionReasons)"
     } else {
-        "Available - No region restrictions applied"
+        "Available"
     }
 
     if ($Zone) {
-        $ZoneRestriction = if ($RestrictedZones -contains $Zone) {
-            "Requested zone $Zone is restricted ($RestrictionReasons)"
+        $ZoneStatus = if ($RestrictedZones -contains $Zone) {
+            "Requested zone $Zone is restricted ($ZoneRestrictionReasons)"
         }
         elseif ($AdvertisedZones -notcontains $Zone) {
             "Requested zone $Zone is not advertised for this SKU"
         }
         else {
-            "Requested zone $Zone has no SKU restriction"
+            "Requested zone $Zone is available"
         }
     }
     elseif ($ZoneRestrictions.Count -gt 0) {
-        $ZoneRestriction = if ($AvailableZones.Count -gt 0) {
-            "Available in Zone: $($AvailableZones -join ',')"
+        $ZoneStatus = if ($AvailableZones.Count -gt 0) {
+            "Available in zone(s): $($AvailableZones -join ',')"
         }
         else {
-            "No advertised zones available ($RestrictionReasons)"
+            "No advertised zones available ($ZoneRestrictionReasons)"
         }
     }
     elseif ($AdvertisedZones.Count -gt 0) {
-        $ZoneRestriction = "Available in Zone: $($AdvertisedZones -join ',')"
+        $ZoneStatus = "Available in zone(s): $($AdvertisedZones -join ',')"
     }
     else {
-        $ZoneRestriction = "Available - No zone restrictions applied"
+        $ZoneStatus = "Available - No zone restrictions applied"
+    }
+
+    $RestrictionDetails = @()
+
+    if ($LocationRestrictions.Count -gt 0) {
+        $RestrictionDetails += "Region: $LocationRestrictionReasons"
+    }
+
+    if ($ZoneRestrictions.Count -gt 0) {
+        if ($RestrictedZones.Count -gt 0) {
+            $RestrictionDetails += "Unavailable zone(s) $($RestrictedZones -join ','): $ZoneRestrictionReasons"
+        }
+        else {
+            $RestrictionDetails += "Zone restriction: $ZoneRestrictionReasons"
+        }
+    }
+
+    $RestrictionDetail = if ($RestrictionDetails.Count -gt 0) {
+        $RestrictionDetails -join "; "
+    }
+    else {
+        "None"
     }
 
     $HasAvailableZone = if ($Zone) {
-        $ZoneRestriction -eq "Requested zone $Zone has no SKU restriction"
+        $ZoneStatus -eq "Requested zone $Zone is available"
     }
     else {
         $ZoneRestrictions.Count -eq 0 -or $AvailableZones.Count -gt 0
@@ -264,7 +287,14 @@ foreach ($Sku in $VMSKUs) {
     $CapacitySignals = @()
 
     if ($LocationRestrictions.Count -gt 0) { $CapacitySignals += "region restricted" }
-    if ($ZoneRestrictions.Count -gt 0) { $CapacitySignals += "zone restricted" }
+    if ($ZoneRestrictions.Count -gt 0) {
+        if ($AvailableZones.Count -gt 0 -and -not $Zone) {
+            $CapacitySignals += "available in limited zones"
+        }
+        else {
+            $CapacitySignals += "zone restricted"
+        }
+    }
     if ($QuotaStatus.Status -eq "QuotaInsufficient") { $CapacitySignals += "quota insufficient" }
 
     $CapacitySignal = if ($CapacitySignals.Count -gt 0) {
@@ -277,14 +307,56 @@ foreach ($Sku in $VMSKUs) {
         "No known SKU restriction; quota not checked"
     }
 
+    $ZoneSummary = if ($LocationRestrictions.Count -gt 0) {
+        "None"
+    }
+    elseif ($Zone) {
+        if ($HasAvailableZone) { $Zone } else { "Unavailable" }
+    }
+    elseif ($AvailableZones.Count -gt 0) {
+        $AvailableZones -join ","
+    }
+    elseif ($AdvertisedZones.Count -gt 0) {
+        $AdvertisedZones -join ","
+    }
+    else {
+        "Regional"
+    }
+
+    $AvailabilitySummary = if ($LocationRestrictions.Count -gt 0) {
+        "Region restricted"
+    }
+    elseif ($Zone -and -not $HasAvailableZone) {
+        "Zone unavailable"
+    }
+    elseif ($ZoneRestrictions.Count -gt 0 -and $AvailableZones.Count -gt 0) {
+        "Limited zones"
+    }
+    elseif ($ZoneRestrictions.Count -gt 0) {
+        "Zone restricted"
+    }
+    else {
+        "Available"
+    }
+
+    $QuotaSummary = switch ($QuotaStatus.Status) {
+        "QuotaAvailable" { "OK" }
+        "QuotaInsufficient" { "Insufficient" }
+        "Not checked" { "Not checked" }
+        default { $QuotaStatus.Status }
+    }
+
     $OutputRow = [PSCustomObject]@{
         "Name"                     = $Sku.Name
         "Location"                 = $Region
+        "Zones"                    = $ZoneSummary
+        "Availability"             = $AvailabilitySummary
         "vCPUs"                    = $VCpuCount
         "Requested Cores"          = $RequestedCores
-        "Subscription Restriction" = $LocRestriction
-        "Zone Restriction"         = $ZoneRestriction
-        "Restriction Reasons"      = $RestrictionReasons
+        "Region Status"            = $RegionStatus
+        "Zone Status"              = $ZoneStatus
+        "Quota"                    = $QuotaSummary
+        "Restriction Detail"       = $RestrictionDetail
         "Quota Check"              = $QuotaStatus.Status
         "Quota Detail"             = $QuotaStatus.Detail
         "Capacity Signal"          = $CapacitySignal
@@ -299,17 +371,17 @@ foreach ($Sku in $VMSKUs) {
     }
 }
 
-Write-Host "Note: Azure does not expose a guaranteed live capacity API for arbitrary VM sizes. This script reports SKU metadata restrictions and, with -CheckQuota, subscription vCPU quota. Deployment validation/preflight is still the authoritative capacity check.`n" -ForegroundColor Yellow
+Write-Host "Note: SKU and quota checks are preflight signals; deployment validation is still authoritative for live capacity.`n" -ForegroundColor Yellow
 
-$Columns = @("Name", "Location", "Subscription Restriction", "Zone Restriction", "Restriction Reasons", "Capacity Signal")
+$TableColumns = @("Name", "Location", "Zones", "Availability")
+$ListColumns = @("Name", "Location", "Region Status", "Zone Status", "Capacity Signal", "Restriction Detail")
 
 if ($CheckQuota) {
-    $Columns += @("vCPUs", "Requested Cores", "Quota Check", "Quota Detail")
+    $TableColumns += @("Quota")
+    $ListColumns += @("vCPUs", "Requested Cores", "Quota Check", "Quota Detail")
 }
 
-$Results = $OutTable |
-    Sort-Object -Property Name |
-    Select-Object -Property $Columns
+$Results = @($OutTable | Sort-Object -Property Name)
 
 $ResolvedOutputFormat = $OutputFormat
 if ($ResolvedOutputFormat -eq "Auto") {
@@ -317,8 +389,12 @@ if ($ResolvedOutputFormat -eq "Auto") {
 }
 
 if ($ResolvedOutputFormat -eq "List") {
-    $Results | Format-List -Property *
+    $Results |
+        Select-Object -Property $ListColumns |
+        Format-List -Property *
 }
 else {
-    $Results | Format-Table -AutoSize -Wrap
+    $Results |
+        Select-Object -Property $TableColumns |
+    Format-Table -AutoSize
 }
