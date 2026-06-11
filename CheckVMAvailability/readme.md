@@ -48,7 +48,7 @@ The capacity-related columns mean:
 - `Zone Status`: Which availability zone is usable for the SKU, or whether a requested zone is blocked.
 - `Restriction Detail`: Scoped restriction details, such as the unavailable zone numbers and the Azure reason code for those zones. This is included in list output.
 - `Capacity Signal`: A summarized signal from SKU restrictions and quota checks.
-- `Quota`: A compact quota summary shown in table output when `-CheckQuota` is used.
+- `Quota`: A compact quota summary shown in table output when `-CheckQuota` is used, including remaining regional and VM-family vCPU quota.
 - `Quota Check`: Whether the subscription has enough regional and VM-family vCPU quota for the requested VM count.
 - `Quota Detail`: Current quota headroom details when `-CheckQuota` is used.
 

@@ -340,8 +340,8 @@ foreach ($Sku in $VMSKUs) {
     }
 
     $QuotaSummary = switch ($QuotaStatus.Status) {
-        "QuotaAvailable" { "OK" }
-        "QuotaInsufficient" { "Insufficient" }
+        "QuotaAvailable" { "OK ($($QuotaStatus.Detail))" }
+        "QuotaInsufficient" { "Insufficient ($($QuotaStatus.Detail))" }
         "Not checked" { "Not checked" }
         default { $QuotaStatus.Status }
     }
